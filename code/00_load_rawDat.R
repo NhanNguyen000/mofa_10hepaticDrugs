@@ -20,6 +20,7 @@ for (fileName in liver2) {
 
 rawDat <- rawDat_temp %>% purrr::reduce(full_join) %>% 
   column_to_rownames("...1") 
+dim(rawDat) # [1] 60664   474
 
 # VST normalization using DESeq2-----------------------------------------------------
 # use of the concept of variance stabilizing transformations (VST) in DESeq2
@@ -49,19 +50,45 @@ symbols <- mapIds(org.Hs.eg.db, keys = rownames(norm_rna),
                   column = c('SYMBOL'), keytype = 'ENSEMBL') %>% 
   as.data.frame() %>% rename("." = "symbol") %>% rownames_to_column("ensembl")
 
-norm_rna_v2 <- norm_rna %>% as.data.frame() %>% 
+norm_rna_v2_temp <- norm_rna %>% as.data.frame() %>% 
   rownames_to_column("ensembl") %>% 
   full_join(symbols) %>% 
   dplyr::select(-ensembl) %>%
   group_by(symbol) %>%
   summarise(across(1:474, mean, na.rm = TRUE))
 
-which(is.na(norm_rna_v2$symbol)) # 36245
+which(is.na(norm_rna_v2_temp$symbol)) # 36614
 
-norm_rna_v2 <- norm_rna_v2 %>% 
-  dplyr::slice(-36245) %>% 
+norm_rna_v2 <- norm_rna_v2_temp %>% 
+  dplyr::slice(-which(is.na(norm_rna_v2_temp$symbol))) %>% 
   column_to_rownames("symbol")
 
-dim(norm_rna_v2) #  36244   474, lost haft of the gene
+dim(norm_rna_v2) # [1] 36613   474, lost haft of the gene
+
 # save data -----------------------------------------------------
-save(norm_rna, norm_rna_v2, expDesignTab, file = "processedDat/inputDat.RData")
+dim(norm_rna) #  60664   474
+dim(norm_rna_v2) #  36613   474
+
+# normalized data
+dat <- list()
+dat[["normRNA_allEnsembleIds"]] <- norm_rna # all measured Ensemble IDs
+dat[["normRNA_geneSymbols"]] <- norm_rna_v2 # only measured Ensemble IDs converted into gene symbol
+
+# metadata
+expDesignTab <- as.data.frame(expDesignTab) %>% 
+  mutate(drug = gsub("Rif", "RIF", drug),
+         condition = gsub("Rif", "RIF", condition)) %>% 
+  mutate(#drug = ifelse(drug == "Con", "Control", drug),
+    condition2 = ifelse(drug == "Con", condition, drug)) %>%
+  mutate(
+    drug = factor(drug, levels = c("Con", 
+                                   "5FU", "APA", "AZA", "CYC", "DIC", 
+                                   "ISO", "MTX", "PHE", "RIF", "VPA")),
+    condition2 = factor(condition2, 
+                        levels = c("ConDMSO", "ConUNTR", 
+                                   "5FU", "APA", "AZA", "CYC", "DIC",
+                                   "ISO", "MTX", "PHE", "RIF", "VPA" )))
+rownames(expDesignTab) <- expDesignTab$name
+
+# save
+save(dat, expDesignTab, file = "processedDat/inputDat.RData")

@@ -4,125 +4,122 @@ rm(list = ls())
 library(tidyverse)
 library(PCAtools)
 library(ggplot2)
+library(org.Hs.eg.db)
+
+source("code/00_plotSettings.R")
 # load data =======================================================================
 load("processedDat/inputDat.RData")
-dim(norm_rna) #  60664   474
-dim(norm_rna_v2) #  36244   474
 
-# PCA for all measured Ensemble IDs --------------------------------------------------------
+#nameDat <- "normRNA_allEnsembleIds" # all measured Ensemble IDs
+nameDat <- "normRNA_geneSymbols" # only measured Ensemble IDs converted into gene symbol
+
+inputDat <- dat[[nameDat]]
+
+# calculate PCA ------------------------------------------------------------
+expDesignTab <- as.data.frame(expDesignTab)
 rownames(expDesignTab) <- expDesignTab$name
-all(colnames(norm_rna) == rownames(expDesignTab)) # TRUE, so can run the next code
-#p <- pca(norm_rna, metadata = expDesignTab, removeVar = 0.1)
+all(colnames(inputDat) == rownames(expDesignTab)) # TRUE, so can run the next code
 
-expDesignTab_v2 <- as.data.frame(expDesignTab)
-rownames(expDesignTab_v2) <- expDesignTab_v2$name
-p <- pca(norm_rna, metadata = expDesignTab_v2, removeVar = 0.1)
+pca_output <- pca(inputDat, metadata = expDesignTab, removeVar = 0.1)
+pc_for75 <-which(cumsum(pca_output$variance) > 75)[1]
+pc_for75
 
-which(cumsum(p$variance) > 75)[1] # PC27
-## A scree plot --------------------------------------------------------
-screeplot(p, axisLabSize = 18, titleLabSize = 22) # A scree plot shows the accumulative proportion of explained variation, 
+# plotting --------------------------------------------------------------
+## scree plot - determine the optimum number of PCs to retain -------------------------------
+screeplot(pca_output, 
+          axisLabSize = 18, 
+          titleLabSize = 22) # scree plot - the accumulative proportion of explained variation 
 
-# # to determine the optimum number of PCs to retain:
-
-# # horn <- parallelPCA(norm_rna) # Horn’s parallel analysis
-# # horn$n # [1] 16
+# horn <- parallelPCA(inputDat) # Horn’s parallel analysis
+# horn_value <- horn$n # horn$n = 16, for both case of the input data
 horn_value <- 16
 
-# elbow <- findElbowPoint(p$variance) # elbow method
-# elbow ## PC10
-elbow_value <- 10
-# In most cases, the identified values will disagree, because finding the correct number of PCs is a difficult task and there is no correct answer.
+elbow_value <- findElbowPoint(pca_output$variance) # elbow method
+elbow_value # 10, for both case of the input data
 
+# In most cases, the identified values (horn vs. elbow) will disagree, 
+# because finding the correct number of PCs is a difficult task and there is no correct answer.
 
-# Taking these values, we can produce a new scree plot and mark these:
-screeplot(p,
-          components = getComponents(p, 1:20),
-          vline = c(horn_value, elbow_value)) +
-  geom_label(aes(x = horn_value + 1, y = 50,
-                 label = 'Horn\'s', vjust = -1, size = 8)) +
-  geom_label(aes(x = elbow_value + 1, y = 50,
-                 label = 'Elbow method', vjust = -1, size = 8))
+# Taking these horn and elbow values, a new scree plot and mark these:
+screeplot_output <-
+  screeplot(pca_output,
+            components = getComponents(pca_output, 1:20),
+            vline = c(horn_value, elbow_value)) +
+  geom_label(
+    aes(x = horn_value + 1, y = 50,
+        label = paste0('Horn\'s, ', 
+                       round(cumsum(pca_output$variance)[horn_value], 2), "%"), 
+        vjust = -1, size = 8)) +
+  geom_label(
+    aes(x = elbow_value + 1, y = 50,
+        label = paste0('Elbow method, ',
+                       round(cumsum(pca_output$variance)[elbow_value], 2), "%"), 
+        vjust = -1, size = 8)) + 
+  plot_theme()
+
+screeplot_output
 
 ## biplot ---------------------------------------------------------------------
-biplot(p)
-biplot(p, showLoadings = TRUE, lab = NULL)
+biplot_basic <- biplot(pca_output)
+biplot_basic
 
-biplot(p,
+biplot(pca_output, showLoadings = TRUE, lab = NULL)
+
+biplot_group <- biplot(pca_output,
+       #colby = 'dose',
+       #colLegendTitle = 'Dose',
        colby = 'dose',
        colLegendTitle = 'Dose',
        hline = 0, vline = 0,
-       encircle = TRUE, encircleFill = FALSE, 
+      # encircle = TRUE, encircleFill = FALSE, 
        encircleAlpha = 0.7, encircleLineSize = 3,
        gridlines.major = FALSE, gridlines.minor = FALSE,
        legendPosition = 'right', legendLabSize = 14, legendIconSize = 6.0,
       # drawConnectors = FALSE,
        title = 'PCA bi-plot',
-       subtitle = 'PC1 versus PC2, 27 PCs ≈ 75%')
+       subtitle = paste0("PC1 versus PC2, ", pc_for75, " PCs ≈ 75%")) + 
+  plot_theme()
+biplot_group
 
-## Other ---------------------------------------------------------------------
-pairsplot(p)
+## other plots ---------------------------------------------------------------------
+pairsplot(pca_output)
 
-plotloadings(p, labSize = 3)
+plotloadings(pca_output, labSize = 2.5)
 
-eigencorplot(p,
-             metavars = c("drug", "dose", "condition", "time"))
+eigencorplot_output <-eigencorplot(
+  pca_output,
+  metavars = c("drug", "dose", "condition", "time"))
 
+eigencorplot_output
+# save plots ------------------------------------------------------------
+png(file= paste0("output/01_", nameDat, "_screePlot.png"), width = 720)
+screeplot_output
+dev.off()
 
-# PCA for only measured Ensemble IDs converted into gene symbol ---------------------
+png(file= paste0("output/01_", nameDat, "_biplotBasic.png"), width = 720)
+biplot_basic
+dev.off()
 
-## check how non-symboled genes contributed to the  PCA loading ----------------------
-k <- p$loadings %>% rownames_to_column("ensembl") %>% full_join(symbols)
-k2 <- k %>% filter(is.na(symbol))
+png(file= paste0("output/01_", nameDat, "_biplotGroup.png"), width = 720)
+biplot_group
+dev.off()
 
-## PCA ---------------------------------------------------------------------------
-p <- pca(norm_rna_v2, metadata = expDesignTab_v2, removeVar = 0.1)
+png(file= paste0("output/01_", nameDat, "_eigencorplot.png"), width = 720)
+eigencorplot_output
+dev.off()
 
-which(cumsum(p$variance) > 75)[1] # PC18
-## A scree plot --------------------------------------------------------
-screeplot(p, axisLabSize = 18, titleLabSize = 22) # A scree plot shows the accumulative proportion of explained variation, 
+# how non-symboled genes contributed to the PCA loading ----------------------
+symbols <- mapIds(org.Hs.eg.db, keys = rownames(dat$normRNA_allEnsembleIds),
+                  column = c('SYMBOL'), keytype = 'ENSEMBL') %>% 
+  as.data.frame() %>% rename("." = "symbol") %>% rownames_to_column("ensembl")
 
-# to determine the optimum number of PCs to retain:
+pca_geneSymbols_temp <- pca_output$loadings %>% 
+  rownames_to_column("ensembl") %>% full_join(symbols)
 
-# horn <- parallelPCA(norm_rna) # Horn’s parallel analysis
-# horn$n # [1] 16
-horn_value <- 16
+pca_geneSymbols <- pca_geneSymbols_temp %>% filter(is.na(symbol)) %>% 
+  as.data.frame() %>% dplyr::select(-symbol) %>% column_to_rownames("ensembl")
 
-# elbow <- findElbowPoint(p$variance) # elbow method
-# elbow ## PC10
-elbow_value <- 10
-# In most cases, the identified values will disagree, because finding the correct number of PCs is a difficult task and there is no correct answer.
-
-
-# Taking these values, we can produce a new scree plot and mark these:
-screeplot(p,
-          components = getComponents(p, 1:20),
-          vline = c(horn_value, elbow_value)) +
-  geom_label(aes(x = horn_value + 1, y = 50,
-                 label = 'Horn\'s', vjust = -1, size = 8)) +
-  geom_label(aes(x = elbow_value + 1, y = 50,
-                 label = 'Elbow method', vjust = -1, size = 8))
-
-## biplot ---------------------------------------------------------------------
-biplot(p)
-biplot(p, showLoadings = TRUE, lab = NULL)
-
-biplot(p,
-       colby = 'dose',
-       colLegendTitle = 'Dose',
-       hline = 0, vline = 0,
-       encircle = TRUE, encircleFill = FALSE, 
-       encircleAlpha = 0.7, encircleLineSize = 3,
-       gridlines.major = FALSE, gridlines.minor = FALSE,
-       legendPosition = 'right', legendLabSize = 14, legendIconSize = 6.0,
-       # drawConnectors = FALSE,
-       title = 'PCA bi-plot',
-       subtitle = 'PC1 versus PC2, 18 PCs ≈ 75%')
-
-## Other ---------------------------------------------------------------------
-pairsplot(p)
-
-plotloadings(p, labSize = 3)
-
-eigencorplot(p,
-             metavars = c("drug", "dose", "condition", "time"))
+dim(dat$normRNA_allEnsembleIds) #[1] 60664   474
+dim(pca_geneSymbols) #[1] 23956   474
+sum(pca_geneSymbols, na.rm = TRUE)
 
