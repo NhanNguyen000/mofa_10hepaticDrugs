@@ -9,7 +9,7 @@ library(cowplot)
 library(MOFAdata)
 library(MOFA2)
 library(ggrepel)
-
+library(pheatmap)
 
 ## correct the plot functions in MOFA2 source code ------------------------------
 plot_enrichment <- function(enrichment.results, factor, alpha = 0.1, max.pathways = 25,
@@ -190,7 +190,7 @@ plot_enrichment_v2 <- function(enrichment.results, factor, alpha = 0.1, selected
     geom_hline(yintercept=-log10(alpha), linetype="longdash") +
     scale_color_manual(values=c("black","red")) +
     geom_segment(aes_string(xend="pathway", yend="start")) +
-    ylab("-log pvalue") +
+    ylab("-log pval.adj") +
     coord_flip() +
     theme(
       axis.text.y = element_text(size=rel(text_size), hjust=1, color='black'),
@@ -264,7 +264,8 @@ plot_enrichment_detailed_v2 <- function(enrichment.results, factor,
   df <- data.frame(pathway=pathways, nfeatures=rowSums(feature.sets_v2,na.rm=TRUE)[pathways])
   #df <- data.frame(pathway=pathways, nfeatures=rowSums(feature.sets,na.rm=TRUE)[pathways])
   df <- merge(df, baz, by="pathway")
-  df$pathway_long_name <- sprintf("%s\n (Ngenes = %d) \n (p-val = %0.2g)",df$pathway, df$nfeatures, df$pvalue)
+  #df$pathway_long_name <- sprintf("%s\n (Ngenes = %d) \n (p-val = %0.2g)",df$pathway, df$nfeatures, df$pvalue)
+  df$pathway_long_name <- sprintf("%s\n (Ngenes = %d)",df$pathway, df$nfeatures)
   tmp <- merge(tmp, df[,c("pathway","pathway_long_name")], by="pathway")
   tmp_filt <- merge(tmp_filt, df[,c("pathway","pathway_long_name")], by="pathway")
   
@@ -446,13 +447,14 @@ k<- grouped_matrix_v2[rownames(b), ]  %>% as.data.frame()
 k[k=="TRUE"] <- "yes"
 k[k=="FALSE"] <- "no"
 
-k2 <- colnames(k) %>% as.data.frame() %>% rename("." = "PathwayID") %>% 
+name_temp <- colnames(k) %>% as.data.frame() %>% rename("PathwayID" = ".") %>% 
   left_join(pathway_ids) %>%
   mutate(PathwayName = ifelse(PathwayID == "R-HSA-937061",  
                               "TRIF (TICAM1)-mediated TLR4 signaling", PathwayName)) %>% 
   mutate(pathway_long_name = paste0(PathwayName, " (", PathwayID, ")"))
 
-colnames(k3) <- k2$pathway_long_name
+k2 <- k
+colnames(k2) <- name_temp$pathway_long_name
 
 # Define colors for binary membership
 ann_colors <- lapply(k, function(x) c("no" = "white", "yes" = "blue"))
@@ -465,14 +467,14 @@ pheatmap(b,
          annotation_colors = ann_colors,
          cutree_rows = 10)
 
-ann_colors3 <- lapply(k3, function(x) c("no" = "white", "yes" = "blue"))
+ann_colors2 <- lapply(k2, function(x) c("no" = "white", "yes" = "blue"))
 
 pheatmap(b,
          color = col,
          cluster_cols = FALSE,
          show_rownames = FALSE,
-         annotation_row = k3,
-         annotation_colors = ann_colors3,
+         annotation_row = k2,
+         annotation_colors = ann_colors2,
          cutree_rows = 10,
          annotation_legend = FALSE,
          annotation_width = 1.5,      # adjust width of annotation bar
@@ -493,7 +495,13 @@ plot_enrichment(res_list$negative, factor = 1, max.pathways = 15)
 
 # plot selected enriched pathways per factor
 selected_pathways <- res_list$all$sigPathways[[1]][1:30] # factor 1
-selected_pathways <- k2$PathwayName # factor 1
+
+selected_pathways <- name_temp$PathwayName 
+
+View(res_list$all$pval.adj)
+h <- res_list$all$pval.adj [name_temp$PathwayName,] %>% filter(Factor1 < 0.05)
+selected_pathways <- rownames(h)
+k <- res_list$all$set.statistics[rownames(h),]
 
 plot_enrichment_v2(res_list$all, factor = 1, 
                    selected.pathway = selected_pathways)
@@ -524,16 +532,53 @@ plot_enrichment_detailed(res_list$negative,
                          max.pathways = 5)
 
 # plot selected enriched pathways with top gene per factor
+
 plot_enrichment_detailed_v2(res_list$all, 
                          factor = 1, 
                          max.genes = 8, 
                          selected.pathway = selected_pathways)
 
-plot_enrichment_detailed_v2(res_list$all, 
-                            factor = 1, 
-                            max.genes = 8, 
-                            selected.pathway = selected_pathways)
+## Selected plots grouped together ------------------------------------------------------
+selected_pathways <- name_temp$PathwayName 
 
+View(res_list$all$pval.adj)
+h <- res_list$all$pval.adj [name_temp$PathwayName,] %>% filter(Factor1 < 0.05)
+selected_pathways <- rownames(h)
+k <- res_list$all$set.statistics[rownames(h),]
+
+
+p1 <- plot_enrichment_v2(res_list$all, factor = 1, 
+                   selected.pathway = selected_pathways)
+p1
+p2 <- plot_enrichment_detailed_v2(res_list$all, 
+                            factor = 1, 
+                            max.genes = 30, 
+                            selected.pathway = selected_pathways)
+p2
+
+h2 <- h %>% arrange(desc(Factor1))
+
+df <- data.frame(
+  pathway = rownames(k),
+  value = k[, "Factor1"]
+) %>% mutate(pathway = factor(pathway, levels = rownames(h2)))
+
+# Plot heatmap
+p3 <- ggplot(df, aes(x = "Factor1", y = pathway, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(x = "", y = "", fill = "Factor1") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 8)
+  )
+
+
+library(patchwork)
+p1 + p3 + p2 # Combine side by side
+
+p1 + p3
 # can run some GO pathway similarity analysis, and select the top GO pathways
 
 
