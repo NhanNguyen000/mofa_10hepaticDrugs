@@ -447,7 +447,7 @@ k<- grouped_matrix_v2[rownames(b), ]  %>% as.data.frame()
 k[k=="TRUE"] <- "yes"
 k[k=="FALSE"] <- "no"
 
-name_temp <- colnames(k) %>% as.data.frame() %>% rename("PathwayID" = ".") %>% 
+name_temp <- colnames(k) %>% as.data.frame() %>% dplyr::rename("PathwayID" = ".") %>% 
   left_join(pathway_ids) %>%
   mutate(PathwayName = ifelse(PathwayID == "R-HSA-937061",  
                               "TRIF (TICAM1)-mediated TLR4 signaling", PathwayName)) %>% 
