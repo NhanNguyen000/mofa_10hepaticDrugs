@@ -505,12 +505,21 @@ k <- res_list$all$set.statistics[rownames(h),]
 
 plot_enrichment_v2(res_list$all, factor = 1, 
                    selected.pathway = selected_pathways)
+
 plot_enrichment_v2(res_list$all, factor = 2, 
                    selected.pathway = selected_pathways)
+plot_enrichment(res_list$all, factor = 2, max.pathways = 30)
+
 plot_enrichment_v2(res_list$all, factor = 3, 
                    selected.pathway = selected_pathways)
+plot_enrichment(res_list$all, factor = 3, max.pathways = 30)
+
 plot_enrichment_v2(res_list$all, factor = 4, 
                    selected.pathway = selected_pathways)
+plot_enrichment(res_list$all, factor = 4, max.pathways = 30)
+
+plot_enrichment(res_list$all, factor = 5, max.pathways = 30)
+plot_enrichment(res_list$all, factor = 6, max.pathways = 30)
 
 plot_enrichment_v2(res_list$negative, factor = 1, 
                    selected.pathway = selected_pathways)
@@ -518,6 +527,24 @@ plot_enrichment_v2(res_list$negative, factor = 1,
 # plot top enriched pathways with top gene per factor
 plot_enrichment_detailed(res_list$all, 
                          factor = 1, 
+                         max.genes = 8, 
+                         max.pathways = 15)
+
+plot_enrichment_detailed(res_list$all, 
+                         factor = 2, 
+                         max.genes = 8, 
+                         max.pathways = 15)
+
+plot_enrichment_detailed(res_list$all, 
+                         factor = 3, 
+                         max.genes = 8, 
+                         max.pathways = 15)
+plot_enrichment_detailed(res_list$all, 
+                         factor = 4, 
+                         max.genes = 8, 
+                         max.pathways = 15)
+plot_enrichment_detailed(res_list$all, 
+                         factor = 6, 
                          max.genes = 8, 
                          max.pathways = 15)
 

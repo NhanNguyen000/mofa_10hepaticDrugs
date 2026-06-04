@@ -28,7 +28,7 @@ model@samples_metadata <- model@samples_metadata %>%
 
 rm(dat, expDesignTab)
 
-# Visualisation of combinations of factors ------------------------------------
+# Visualization of combinations of factors ------------------------------------
 set.seed(42)
 model@samples_metadata$condition3
 model@samples_metadata <- model@samples_metadata %>%

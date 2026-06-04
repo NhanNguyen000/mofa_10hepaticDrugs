@@ -130,6 +130,12 @@ plot_factor(model,
 )
 
 plot_factor(model, 
+            factors = c(1:7), 
+            color_by = "time",
+            shape_by = "dose"
+)
+
+plot_factor(model, 
             factor = 2:3,
             color_by = "time",
             shape_by = "condition3")
@@ -149,12 +155,17 @@ plot_factor(model, factors=3, group_by = "drug") +
 
 plot_factor(model, factors=4, group_by = "drug") +
   theme(axis.text.x = element_text(color="black", angle=40, vjust=1, hjust=1))
+plot_factor(model, factors=4, group_by = "time") +
+  theme(axis.text.x = element_text(color="black", angle=40, vjust=1, hjust=1))
 
 plot_factor(model, factors=5, group_by = "drug") +
   theme(axis.text.x = element_text(color="black", angle=40, vjust=1, hjust=1))
 
 plot_factor(model, factors=6, group_by = "drug") +
   theme(axis.text.x = element_text(color="black", angle=40, vjust=1, hjust=1))
+plot_factor(model, factors=6, group_by = "time") +
+  theme(axis.text.x = element_text(color="black", angle=40, vjust=1, hjust=1))
+
 
 plot_factor(model, factors=7, group_by = "drug") +
   theme(axis.text.x = element_text(color="black", angle=40, vjust=1, hjust=1))
@@ -179,6 +190,9 @@ samples_factor1 <- plot_factor(model, factors=1, group_by = "drug") +
 plot_factors(model, 
              factors = 1:2,
              color_by = "drug")
+plot_factors(model, 
+             factors = 4:6,
+             color_by = "time")
 
 plot_factors(model, 
              factors = 1:2,
