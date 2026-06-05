@@ -381,6 +381,32 @@ names(res_list$all)
 res_list$all$set.statistics[1:5,1]
 res_list$all$pval.adj[1:5,1]
 
+## save result --------------------------------------
+pathways_result <- as.data.frame(res_list$all$pval) %>% 
+  rename_with( ~ paste0(.x, "_pval")) %>% 
+  rownames_to_column("pathway") %>% 
+  full_join(as.data.frame(res_list$all$pval.adj) %>% 
+              rename_with( ~ paste0(.x, "_padj")) %>% 
+              rownames_to_column("pathway"))  %>% 
+  full_join(as.data.frame(res_list$all$set.statistics) %>% 
+              rename_with( ~ paste0(.x, "_setStatistics")) %>% 
+              rownames_to_column("pathway")) %>%
+  select(pathway, starts_with(c("Factor1", "Factor2", "Factor3", "Factor4", "Factor5", "Factor6", "Factor7")))
+
+geneWeights_result <- get_weights(model, as.data.frame = TRUE) %>%
+  pivot_wider(names_from = factor, values_from = value) %>%
+  select(-view)
+
+library(openxlsx)
+write.xlsx(
+  list(
+    pathways_result = pathways_result,
+    geneWeights_result = geneWeights_result
+  ),
+  file = "output/MOFA_factors.xlsx",
+  rowNames = FALSE
+)
+
 # Plot results of GSEA analysis - heatmap ------------------------------------------
 plot_enrichment_heatmap(res_list$all)
 plot_enrichment_heatmap(res_list$all, alpha = 0.0001)
@@ -490,12 +516,15 @@ for (condition in names(res_list)) {
 }
 
 plot_enrichment(res_list$all, factor = 1, max.pathways = 30)
+
 plot_enrichment(res_list$positive, factor = 1, max.pathways = 15)
 plot_enrichment(res_list$negative, factor = 1, max.pathways = 15)
 
-# plot selected enriched pathways per factor
-selected_pathways <- res_list$all$sigPathways[[1]][1:30] # factor 1
+plot_enrichment(res_list$all, factor = 1, max.pathways = 25)
+plot_enrichment(res_list$all, factor = 2, max.pathways = 25)
 
+# plot selected enriched pathways per factor
+#selected_pathways <- res_list$all$sigPathways[[1]][1:30] # factor 1
 selected_pathways <- name_temp$PathwayName 
 
 View(res_list$all$pval.adj)
@@ -508,18 +537,18 @@ plot_enrichment_v2(res_list$all, factor = 1,
 
 plot_enrichment_v2(res_list$all, factor = 2, 
                    selected.pathway = selected_pathways)
-plot_enrichment(res_list$all, factor = 2, max.pathways = 30)
+plot_enrichment(res_list$all, factor = 2, max.pathways = 25)
 
 plot_enrichment_v2(res_list$all, factor = 3, 
                    selected.pathway = selected_pathways)
-plot_enrichment(res_list$all, factor = 3, max.pathways = 30)
+plot_enrichment(res_list$all, factor = 3, max.pathways = 25)
 
 plot_enrichment_v2(res_list$all, factor = 4, 
                    selected.pathway = selected_pathways)
-plot_enrichment(res_list$all, factor = 4, max.pathways = 30)
+plot_enrichment(res_list$all, factor = 4, max.pathways = 25)
 
-plot_enrichment(res_list$all, factor = 5, max.pathways = 30)
-plot_enrichment(res_list$all, factor = 6, max.pathways = 30)
+plot_enrichment(res_list$all, factor = 5, max.pathways = 25)
+plot_enrichment(res_list$all, factor = 6, max.pathways = 25)
 
 plot_enrichment_v2(res_list$negative, factor = 1, 
                    selected.pathway = selected_pathways)

@@ -38,7 +38,22 @@ model@samples_metadata <- model@samples_metadata %>%
                              "Control (UNTR, DMSO)",
                              ifelse(condition3 %in% c("CYC_VPA_ISO", "DIC_RIF_MTX_APA"),
                                     as.character(condition3), 
-                                    "other drugs (5FU, AZA, PHE)")))
+                                    "other drugs (5FU, AZA, PHE)"))) %>%
+  mutate(condition_5FU = ifelse(condition3 %in% c("ConUNTR", "ConDMSO"), "Control (UNTR, DMSO)",
+                             ifelse(condition3 == "5FU", "5FU", "other drugs")))  %>%
+  mutate(condition_PHE = ifelse(condition3 %in% c("ConUNTR", "ConDMSO"), "Control (UNTR, DMSO)",
+                                ifelse(condition3 == "PHE", "PHE", "other drugs"))) %>%
+  mutate(condition_time000 = ifelse(time == "000", "000", "others"),
+         condition_time002 = ifelse(time == "002", "002", "others"),
+         condition_time008 = ifelse(time == "008", "008", "others"),
+         condition_time024 = ifelse(time == "024", "024", "others"),
+         condition_time072 = ifelse(time == "072", "072", "others"),
+         condition_time168 = ifelse(time == "168", "168", "others"),
+         condition_time240 = ifelse(time == "240", "240", "others"),
+         condition_time336 = ifelse(time == "336", "336", "others")) %>%
+  mutate(time2 = ifelse(time %in% c("000", "002", "008"), "000_002_008", 
+                        ifelse(time %in% c("024", "072"), "024_072", "168_240_336")))
+
 
 
 # Visualisation of samples in factors 
@@ -90,9 +105,16 @@ factors_condition4 <- plot_factor(
 ) +  scale_fill_manual(values = condition4_palette) #+ plot_theme()
 factors_condition4
 
+
 # samples weight per factors ---------------------------------------
 plot_factor(model, 
             factors = 1, 
+            color_by = "dose",
+            add_violin = TRUE, violin_alpha = 0.1,
+            dodge = TRUE)
+
+plot_factor(model, 
+            factors = 7, 
             color_by = "dose",
             add_violin = TRUE, violin_alpha = 0.1,
             dodge = TRUE)
@@ -208,6 +230,16 @@ factors_5FU_part2 <- plot_factors(model,
              color_by = "condition3")
 factors_5FU_part2
 
+factors_5FU_part3 <- plot_factors(model, 
+                                  factors = c(2,4),
+                                  color_by = "condition_5FU")
+factors_5FU_part3
+
+factors_PHE <- plot_factors(model, 
+                                  factors = c(3,5),
+                                  color_by = "condition_PHE")
+factors_PHE
+
 plot_factors(model, 
              factors = c(3,5),
              color_by = "condition3")
@@ -241,6 +273,36 @@ p <- p +
 
 print(p)
 
+factors_time <- plot_factors(model, 
+                             factors = c(4,6),
+                             color_by = "time")
+factors_time
+
+factors_time000 <- plot_factors(model, 
+                             factors = c(4,6),
+                             color_by = "condition_time000")
+factors_time000
+factors_time002 <- plot_factors(model, 
+                                factors = c(4,6),
+                                color_by = "condition_time002")
+factors_time002
+factors_time008 <- plot_factors(model, 
+                                factors = c(4,6),
+                                color_by = "condition_time008")
+factors_time008
+factors_time024 <- plot_factors(model, 
+                                factors = c(4,6),
+                                color_by = "condition_time024")
+factors_time024
+factors_time072 <- plot_factors(model, 
+                                factors = c(4,6),
+                                color_by = "condition_time072")
+factors_time072
+
+factors_time2 <- plot_factors(model, 
+                                factors = c(4,6),
+                                color_by = "time2")
+factors_time2
 # Save plots ------------------------------------------------------------
 save_plot_png(samples_factor1, 
               filename = paste0("output/04_", nameDat, "_MofaLatentFactor1.png"), 
